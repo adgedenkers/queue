@@ -147,9 +147,11 @@ class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    auth_token = Column(String, unique=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcoffset)
+    username = Column(String, nullable=True)
+    auth_token = Column(String, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # SQLAlchemy: Queue Model
@@ -159,17 +161,15 @@ class QueueDB(Base):
     __tablename__ = "queue"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    raw_text = Column(Text)
-    status = Column(String, default="pending")
-    active = Column(Boolean, default=True)
-    options = Column(JSONB, default=dict)
-    properties = Column(JSONB, nullable=False)
-    created = Column(DateTime, default=datetime.utcnow)
-    updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    raw_text = Column(Text, nullable=True)
+    status = Column(String, nullable=True)
+    active = Column(Boolean, nullable=True)
+    options = Column(JSONB, nullable=True)
+    properties = Column(JSONB, nullable=True)
+    created = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # images = relationship("QueueImage", back_populates="queue_item")
-    # user = relationship("User")
     images = relationship("QueueImage", back_populates="queue_item", lazy="selectin")
     user = relationship("User", lazy="selectin")
 
@@ -180,74 +180,62 @@ class QueueImage(Base):
     __tablename__ = "queue_images"
     
     id = Column(Integer, primary_key=True, index=True)
-    queue_id = Column(Integer, ForeignKey("queue.id"))
-    filename = Column(String)
-    mime_type = Column(String)
-    file_size = Column(Integer)
-    created = Column(DateTime, default=datetime.utcnow)
+    queue_id = Column(Integer, ForeignKey("queue.id"), nullable=True)
+    filename = Column(String, nullable=True)
+    mime_type = Column(String, nullable=True)
+    file_size = Column(Integer, nullable=True)
+    created = Column(DateTime, nullable=False, default=datetime.utcnow)
     
-    #queue_item = relationship("QueueDB", back_populates="images")
     queue_item = relationship("QueueDB", back_populates="images", lazy="selectin")
+
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # SQLAlchemy: Shoe Model
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 class Shoe(Base):
-    __tablename__ = 'shoes'
+    __tablename__ = "shoes"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    brand = Column(String(255), nullable=True, index=True)
-    model = Column(String(255), nullable=True, index=True)
-    gender = Column(Enum(Gender), nullable=True, index=True)
-    size = Column(Numeric(5, 2), nullable=True, index=True)
-    width = Column(String(50), nullable=True, default='M')
-    color = Column(String(255), nullable=True, index=True)
-    shoe_type = Column(String(100), nullable=True, index=True)
-    style = Column(String(100), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    brand = Column(String, nullable=True)
+    model = Column(String, nullable=True)
+    gender = Column(Enum(Gender), nullable=True)
+    size = Column(Numeric(5, 2), nullable=True)
+    width = Column(String, nullable=True)
+    color = Column(String, nullable=True)
+    shoe_type = Column(String, nullable=True)
+    style = Column(String, nullable=True)
     
-    material = Column(String(255), nullable=True)
-    heel_type = Column(String(100), nullable=True)
-    occasion = Column(String(100), nullable=True)
-    condition = Column(String(50), nullable=True, default='Brand New, in Box')
+    material = Column(String, nullable=True)
+    heel_type = Column(String, nullable=True)
+    occasion = Column(String, nullable=True)
+    condition = Column(String, nullable=True)
     special_features = Column(ARRAY(Text), nullable=True)
     
-    upc = Column(String(20), nullable=True, unique=True)
+    upc = Column(String, nullable=True)
     msrp = Column(Numeric(10, 2), nullable=True)
     average_ebay_selling_price = Column(Numeric(10, 2), nullable=True)
-    category = Column(String(255), nullable=True, index=True)
+    category = Column(String, nullable=True)
     
     photos = Column(ARRAY(Text), nullable=True)
     description = Column(Text, nullable=True)
-    ebay_listing_id = Column(String(50), nullable=True, unique=True)
-    ebay_listing_url = Column(String(255), nullable=True)
-    listing_status = Column(
-        Enum(ListingStatus),
-        nullable=True,
-        default=ListingStatus.NOT_LISTED
-    )
+    ebay_listing_id = Column(String, nullable=True)
+    ebay_listing_url = Column(String, nullable=True)
+    listing_status = Column(Enum(ListingStatus), nullable=True)
     listing_start_date = Column(DateTime, nullable=True)
     listing_end_date = Column(DateTime, nullable=True)
     
     sale_price = Column(Numeric(10, 2), nullable=True)
-    buyer_username = Column(String(255), nullable=True)
-    payment_status = Column(
-        Enum(PaymentStatus),
-        nullable=True,
-        default=PaymentStatus.PENDING
-    )
-    shipping_status = Column(
-        Enum(ShippingStatus),
-        nullable=True,
-        default=ShippingStatus.NOT_SHIPPED
-    )
-    shipping_tracking_number = Column(String(100), nullable=True)
+    buyer_username = Column(String, nullable=True)
+    payment_status = Column(Enum(PaymentStatus), nullable=True)
+    shipping_status = Column(Enum(ShippingStatus), nullable=True)
+    shipping_tracking_number = Column(String, nullable=True)
     
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    user = relationship("User", back_populates="shoes")
+    user = relationship("User", lazy="selectin")
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Pydantic Models
@@ -292,9 +280,9 @@ class ShoeBase(BaseModel):
     gender: Gender
     size: float = Field(..., gt=0, lt=100)
     width: str = Field(default='M', max_length=50)
-    color: str = Field(..., min_length=1, max_length=255)
-    shoe_type: str = Field(..., min_length=1, max_length=100)
-    style: str = Field(..., min_length=1, max_length=100)
+    color: Optional[str] = Field(..., min_length=1, max_length=255)
+    shoe_type: Optional[str] = Field(..., min_length=1, max_length=100)
+    style: Optional[str] = Field(..., min_length=1, max_length=100)
     
     material: Optional[str] = Field(None, max_length=255)
     heel_type: Optional[str] = Field(None, max_length=100)
@@ -508,12 +496,21 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up application")
+    #await recreate_database(engine)
+    
+    if not os.path.exists(settings.UPLOAD_DIR):
+        await async_os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Starting up application")
     async with engine.begin() as conn:
         #pass
         # Drop specific tables in correct order
-        #await conn.execute(text("DROP TABLE IF EXISTS queue_images"))
-        #await conn.execute(text("DROP TABLE IF EXISTS queue"))
-        #await conn.execute(text("DROP TABLE IF EXISTS users"))
+        await conn.execute(text("DROP TABLE IF EXISTS queue_images"))
+        await conn.execute(text("DROP TABLE IF EXISTS queue"))
+        await conn.execute(text("DROP TABLE IF EXISTS shoes"))
+        await conn.execute(text("DROP TABLE IF EXISTS users"))
         
         # Create tables
         #await conn.run_sync(Base.metadata.create_all)
@@ -1022,9 +1019,9 @@ async def list_shoes(
     """List shoes with optional filters"""
     try:
         # Verify token matches user_id
-        #user = await verify_token(user_id, x_token, db)
+        user = await verify_token(user_id, x_token, db)
         
-        query = select(Shoe).where(Shoe.user_id == 1)
+        query = select(Shoe).where(Shoe.user_id == user.id)
         
         if brand:
             query = query.where(Shoe.brand.ilike(f"%{brand}%"))
