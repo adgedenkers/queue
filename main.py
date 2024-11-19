@@ -280,9 +280,9 @@ class ShoeBase(BaseModel):
     gender: Gender
     size: float = Field(..., gt=0, lt=100)
     width: str = Field(default='M', max_length=50)
-    color: Optional[str] = Field(..., min_length=1, max_length=255)
-    shoe_type: Optional[str] = Field(..., min_length=1, max_length=100)
-    style: Optional[str] = Field(..., min_length=1, max_length=100)
+    color: Optional[str] = Field(None, max_length=255)
+    shoe_type: Optional[str] = Field(None, max_length=255)
+    style: Optional[str] = Field(None, max_length=255)
     
     material: Optional[str] = Field(None, max_length=255)
     heel_type: Optional[str] = Field(None, max_length=100)
@@ -319,10 +319,21 @@ class ShoeUpdate(BaseModel):
     color: Optional[str] = None
     shoe_type: Optional[str] = None
     style: Optional[str] = None
+    width: Optional[str] = None
+    material: Optional[str] = None
+    heel_type: Optional[str] = None
+    occasion: Optional[str] = None
+    condition: Optional[str] = None
+    special_features: Optional[List[str]] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
     listing_status: Optional[ListingStatus] = None
     shipping_status: Optional[ShippingStatus] = None
     payment_status: Optional[PaymentStatus] = None
 
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Pydantic: ShoeResponse model
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 class ShoeResponse(ShoeBase):
     id: int
     user_id: int
@@ -340,7 +351,8 @@ class ShoeResponse(ShoeBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Pydantic: UserBase model
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -641,7 +653,7 @@ async def create_queue_item(
 
         # Create Queue item
         db_queue = QueueDB(
-            user_id=user.id if hasattr(user, 'id') else 1,
+            user_id=user.id if hasattr(user, 'id') else 4,
             raw_text=queue_data.raw_text,
             options=queue_data.options,
             properties=queue_data.properties
