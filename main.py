@@ -1000,11 +1000,18 @@ async def create_shoe(
 # -----------------------------------------------------------------------------
 # GET /shoes/                               List shoes with optional filters
 # -----------------------------------------------------------------------------
-
-@app.get("/shoes/", response_model=List[ShoeResponse])
+@app.get("/shoes/")
+async def get_shoes(x_token: str = Header(...), user_id: str = Header(None)):
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="User ID header is missing")
+    # Process the request using the user_id
+    list_shoes(user_id, x_token)
+    return {"message": f"Retrieving list of shoes"}
+#@app.get("/shoes/", response_model=List[ShoeResponse])
+#
 async def list_shoes(
     user_id: int,
-    #x_token: str = Header(..., description="User Authentication Token"),
+    x_token: str = Header(..., description="User Authentication Token"),
     skip: int = 0,
     limit: int = 100,
     brand: Optional[str] = None,
