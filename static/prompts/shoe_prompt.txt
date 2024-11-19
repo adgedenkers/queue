@@ -1,0 +1,65 @@
+Using the input JSON, generate a detailed and complete JSON response by following these steps:
+
+1. **Parse Input Data:** Extract key fields like `brand`, `model`, `size`, `gender`, etc.
+2. **Search for Missing Details:** For any fields that are missing or incomplete, conduct an online search using the following prioritized sources:
+   - **Manufacturer's website:** For `brand`, `model`, `description`, `material`, and `msrp`.
+   - **eBay or similar platforms:** For `asking_price` (active listings) and color options.
+   - **General online search:** For any additional information not found in the above sources.
+3. **Ensure All Fields Are Filled:** Populate all fields with specific values. Search with Google if need be.
+4. **Only Return the JSON Response:** The output must be JSON-only, formatted correctly, and ready for parsing. Do not include any additional text, comments, or explanations.
+
+**Input Example:**
+```json
+{
+  "Product": "Birkenstock sandals",
+  "Model": "Bostonian",
+  "Size": 9,
+  "Gender": "Womens"
+}
+```
+
+**Expected JSON Response Format:**
+```json
+{
+    "brand": "",
+    "model": "",
+    "size": "",
+    "gender": "",
+    "color": "",
+    "condition": "New",
+    "material": "",
+    "fit_type": "",
+    "pattern": "",
+    "occasion": "",
+    "season": "",
+    "length": null,
+    "upc": "",
+    "msrp": null,
+    "asking_price": null,
+    "sale_price": null,
+    "description": "",
+    "quantity": 1,
+    "condition_id": 1000,
+    "dispatch_time": 1,
+    "return_accepted": true,
+    "return_policy": "30-day returns",
+    "shipping_type": "Flat",
+    "shipping_cost": 0.00,
+    "international_shipping": false,
+    "item_location": "New York, NY",
+    "listing_status": "Active",
+    "views": 0,
+    "watchers": 0,
+    "last_updated": "<current_timestamp>",
+    "created_at": "<current_timestamp>"
+}
+```
+
+**Output Requirements:**
+- Use specific and accurate data for all fields based on the searches.
+- Replace `<current_timestamp>` with the actual current timestamp.
+- Ensure the JSON is valid and properly formatted with no additional output.
+
+---
+
+**Objective:** Automate the process of generating structured and complete JSON data for products using the best available sources.
