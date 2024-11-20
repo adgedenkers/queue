@@ -27,6 +27,8 @@ Using the input JSON, generate a detailed and complete JSON response by followin
     "gender": "",
     "color": "",
     "condition": "New",
+    "shoe_type": "",
+    "style": "",
     "material": "",
     "fit_type": "",
     "pattern": "",
