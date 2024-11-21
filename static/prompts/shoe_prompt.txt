@@ -5,8 +5,9 @@ Using the input JSON, generate a detailed and complete JSON response by followin
    - **Manufacturer's website:** For `brand`, `model`, `description`, `material`, and `msrp`.
    - **eBay or similar platforms:** For `asking_price` (active listings) and color options.
    - **General online search:** For any additional information not found in the above sources.
-3. **Ensure All Fields Are Filled:** Populate all fields with specific values. Search with Google if need be.
-4. **Only Return the JSON Response:** The output must be JSON-only, formatted correctly, and ready for parsing. Do not include any additional text, comments, or explanations.
+3. **Ensure All Fields Are Filled:** Populate all fields with researched data values. Search with Google and any other site you need to, to provide data for every field. 
+4. **After receiving the enahnced data:** Review the data and search for that particular pair of shoes using the data you have. if you cannot find all the data elements, start the process over and re-parse the raw text.
+5. **Only Return the JSON Response:** The output must be JSON-only, formatted correctly, and ready for parsing. Do not include any additional text, comments, or explanations.
 
 **Input Example:**
 ```json

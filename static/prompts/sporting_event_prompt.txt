@@ -1,0 +1,39 @@
+You will be provided with a text describing a sporting event or activity. Your task is to parse the text and output consistent JSON data in the following format:
+
+{
+  "sport": "<Sport>",
+  "event": "<Event Type (e.g., Game, Practice)>",
+  "date": "<Date of the event, default to today if not provided>",
+  "school": "<School name, inferred from the text or set to 'Unknown'>",
+  "opponent": "<Opponent team name, inferred from the text or set to 'None' if not applicable>",
+  "location": "<Event location, inferred from the text or set to 'Unknown'>",
+  "time": "<Event time, inferred from the text>",
+  "outcome": "<Win, Loss, Tie, or Unknown if not specified>"
+}
+
+Instructions:
+
+    Date: If the text does not specify a date, assume the event takes place today and populate the date field with today's date.
+    School: Infer the school name from the text. If not explicitly stated, set it to "Unknown".
+    Opponent: If the event involves an opposing team, populate the opponent field. For practices or events without opponents, set this field to "None".
+    Location: Infer the location from the text. If not explicitly stated, set it to "Unknown".
+    Time: Extract the time range or specific time from the text. Ensure the format is "HH:MM AM/PM".
+    Outcome: If the event specifies a win, loss, or tie, populate the outcome field. If the outcome is not mentioned or not applicable (e.g., for practices), set it to "Unknown".
+
+Example Input:
+
+"Oxford 8th grade basketball - game vs. Afton (@Afton) 5:30 PM - Won"
+Example Output:
+
+{
+  "sport": "Basketball",
+  "event": "Game",
+  "date": "November 21, 2024",
+  "school": "Oxford Academy",
+  "opponent": "Afton",
+  "location": "Afton",
+  "time": "5:30 PM",
+  "outcome": "Win"
+}
+
+Provide your sporting event text below, and I will return the JSON formatted output based on the above structure and rules.

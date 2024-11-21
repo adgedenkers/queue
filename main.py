@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, Query, File, Form, Depen
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, text, UniqueConstraint 
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, text, UniqueConstraint, Column, String, Integer, Numeric, Text, ARRAY, DateTime, Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -27,18 +27,20 @@ import json
 import uuid
 import magic
 import logging
+import aiohttp
 from logging.handlers import RotatingFileHandler
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, validator, EmailStr
+from pydantic import BaseModel, Field, validator, EmailStr, field_validator
 from sqlalchemy.orm import selectinload
 from dotenv import load_dotenv
 import aiofiles.os as async_os
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 import enum
+from bs4 import BeautifulSoup
+
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, validator
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Numeric, Text, ARRAY, DateTime, Enum, ForeignKey
+
 import openai
 
 from openai import OpenAI, OpenAIError, AsyncOpenAI
@@ -293,7 +295,7 @@ class ShoeBase(BaseModel):
     category: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
 
-    @validator('size')
+    @field_validator('size')
     def validate_size(cls, v):
         if not isinstance(v, (int, float)):
             raise ValueError('Size must be a number')
@@ -500,53 +502,128 @@ async def verify_token(
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # FastAPI app
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-app = FastAPI()
+# app = FastAPI()
+# be explicit about what you're declaring `app` as
+app: FastAPI = FastAPI()
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # FastAPI App Startup and shutdown events
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Starting up application")
-    #await recreate_database(engine)
+    """Initialize application on startup"""
+    logger.info("Starting up application - Beginning database initialization")
     
-    if not os.path.exists(settings.UPLOAD_DIR):
-        await async_os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Starting up application")
-    async with engine.begin() as conn:
-        #pass
-        # Drop specific tables in correct order
-        await conn.execute(text("DROP TABLE IF EXISTS queue_images"))
-        await conn.execute(text("DROP TABLE IF EXISTS queue"))
-        await conn.execute(text("DROP TABLE IF EXISTS shoes"))
-        await conn.execute(text("DROP TABLE IF EXISTS users"))
+    try:
+        # Test database connection first
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+            logger.info("Database connection test successful")
         
-        # Create tables
-        #await conn.run_sync(Base.metadata.create_all)
-        
+        # Create all tables
         async with engine.begin() as conn:
+            logger.info("Beginning table creation process")
+            
+            # Drop existing tables
+            logger.info("Dropping existing tables if present")
+            drop_statements = [
+                "DROP TABLE IF EXISTS queue_images CASCADE",
+                "DROP TABLE IF EXISTS queue CASCADE",
+                "DROP TABLE IF EXISTS shoes CASCADE",
+                "DROP TABLE IF EXISTS users CASCADE"
+            ]
+            
+            for stmt in drop_statements:
+                await conn.execute(text(stmt))
+                logger.info(f"Executed: {stmt}")
+            
+            # Create tables using SQLAlchemy metadata
+            logger.info("Creating new tables")
             await conn.run_sync(Base.metadata.create_all)
+            
+            # Verify tables were created
+            verify_statements = [
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users')",
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'queue')",
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'queue_images')",
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'shoes')"
+            ]
+            
+            for stmt in verify_statements:
+                result = await conn.execute(text(stmt))
+                exists = result.scalar()
+                logger.info(f"Table verification - {stmt}: {exists}")
+            
+            # Create default user
+            logger.info("Creating default user")
+            await conn.execute(
+                text("""
+                    INSERT INTO users (id, username, auth_token, created_at, updated_at)
+                    VALUES (1, 'adge', '6b1f9eeb7e3a1f6e3b3f1a2c5a7d9e1b', NOW(), NOW())
+                    ON CONFLICT (id) DO UPDATE 
+                    SET auth_token = EXCLUDED.auth_token,
+                        updated_at = NOW()
+                """)
+            )
+            
+            # Verify default user
+            result = await conn.execute(
+                text("SELECT id, username, auth_token FROM users WHERE id = 1")
+            )
+            user = result.first()
+            logger.info(f"Default user verification: {user}")
+            
+            await conn.commit()
+            logger.info("Database initialization completed successfully")
+            
+    except SQLAlchemyError as e:
+        logger.error(f"Database initialization error: {str(e)}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error details: {e.args}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during startup: {str(e)}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error details: {e.args}")
+        raise
     
     # Ensure upload directory exists
-    if not os.path.exists(settings.UPLOAD_DIR):
-        await async_os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down application")
     try:
-        if os.path.exists(settings.UPLOAD_DIR):
-            for root, dirs, files in os.walk(settings.UPLOAD_DIR, topdown=False):
-                for name in files:
-                    os.remove(os.path.join(root, name))
-                for name in dirs:
-                    os.rmdir(os.path.join(root, name))
-            os.rmdir(settings.UPLOAD_DIR)
+        if not os.path.exists(settings.UPLOAD_DIR):
+            await async_os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+            logger.info(f"Created upload directory: {settings.UPLOAD_DIR}")
     except Exception as e:
-        logger.error(f"Error cleaning up upload directory: {str(e)}")
+        logger.error(f"Error creating upload directory: {str(e)}")
+        raise
+
+    logger.info("Application startup completed")
+
+# Add this function to help with debugging
+@app.get("/debug/tables")
+async def debug_tables(db: AsyncSession = Depends(get_db)):
+    """Debug endpoint to check table existence"""
+    try:
+        async with db.begin():
+            tables = await db.execute(
+                text("""
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public'
+                """)
+            )
+            existing_tables = [row[0] for row in tables]
+            
+            return {
+                "tables": existing_tables,
+                "metadata_tables": [table.name for table in Base.metadata.sorted_tables],
+                "database_url": settings.DATABASE_URL.split("@")[-1]  # Safe portion of URL
+            }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "error_type": str(type(e)),
+            "database_url": settings.DATABASE_URL.split("@")[-1]  # Safe portion of URL
+        }
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Base API Endpoints
@@ -571,6 +648,125 @@ async def healthcheck(db: AsyncSession = Depends(get_db)):
         "timestamp": datetime.utcnow().isoformat(),
         "database": db_status
     }
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Sports Schedule API Endpoints
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+# -----------------------------------------------------------------------------
+# List sports schedules
+# -----------------------------------------------------------------------------
+
+async def fetch_schedule_data() -> List[Dict[str, Any]]:
+    """
+    Asynchronously fetch and parse the sports schedule data.
+    """
+    url = "https://www.schedulegalaxy.com/schools/159/teams/58255"
+    params = {
+        "commit": "Filter+activities",
+        "game_types[]": [
+            "scrimmage",
+            "regular_season",
+            "post_season",
+            "practice",
+            "non_district",
+            "district"
+        ],
+        "load_partial": "1",
+        "type": "",
+        "utf8": "✓",
+        "_": "1732193986589"
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params) as response:
+                if response.status != 200:
+                    raise HTTPException(
+                        status_code=response.status,
+                        detail="Failed to fetch schedule data from external service"
+                    )
+                html_content = await response.text()
+                
+        # Parse the HTML content
+        soup = BeautifulSoup(html_content, 'html.parser')
+        today_date = datetime.now().strftime("%b %d, %Y")
+        
+        # Find the table
+        table = soup.find('table', class_='schedule')
+        if not table:
+            return []
+            
+        rows = table.find('tbody').find_all('tr') if table.find('tbody') else []
+        
+        # Extract the data for today's date
+        schedule = []
+        for row in rows:
+            date_cell = row.find('td')
+            if not date_cell:
+                continue
+                
+            date_text = date_cell.get_text(strip=True).replace('\n', ' ')
+            
+            if today_date in date_text:
+                cells = row.find_all('td')
+                if len(cells) >= 10:  # Ensure we have all required cells
+                    data = {
+                        "date": date_text,
+                        "type": cells[1].get_text(strip=True),
+                        "opponents": cells[2].get_text(strip=True),
+                        "start_time": cells[3].get_text(strip=True),
+                        "end_time": cells[4].get_text(strip=True),
+                        "location": cells[5].get_text(strip=True),
+                        "departure": cells[6].get_text(strip=True),
+                        "transportation": cells[7].get_text(strip=True),
+                        "league_non_league": cells[8].get_text(strip=True),
+                        "notes": cells[9].get_text(strip=True),
+                        "details_url": row.find('a')['href'] if row.find('a') else None
+                    }
+                    schedule.append(data)
+        
+        return schedule
+        
+    except aiohttp.ClientError as e:
+        logger.error(f"Network error while fetching schedule: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail="External service temporarily unavailable"
+        )
+    except Exception as e:
+        logger.error(f"Error fetching schedule: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching schedule"
+        )
+
+#@app.get("/sports/schedule", tags=["Sports"])
+@app.get("/schedule")
+async def get_sports_schedule():
+    """
+    Get today's sports schedule. This endpoint is publicly accessible and requires no authentication.
+    
+    Returns:
+        List of today's scheduled activities including game type, opponents, times, location, etc.
+    """
+    try:
+        print("hello")
+        # schedule = await fetch_schedule_data()
+        # return {
+        #     "status": "success",
+        #     "timestamp": datetime.utcnow().isoformat(),
+        #     "schedule": schedule
+        # }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in get_sports_schedule: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred"
+        )
+
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Queue API Endpoints
