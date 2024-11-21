@@ -10,7 +10,7 @@
 
 
 from passlib.context import CryptContext
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi import FastAPI, HTTPException, UploadFile, Query, File, Form, Depends, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -705,14 +705,17 @@ async def fetch_schedule_data() -> List[Dict[str, Any]]:
             date_cell = row.find('td')
             if not date_cell:
                 continue
-                
-            date_text = date_cell.get_text(strip=True).replace('\n', ' ')
+            
+            date_text = date_cell.get_text()
+            date_text = date_text.replace('\n', ' ').strip()
+
+            from fastapi.responses import JSONResponse
             
             if today_date in date_text:
                 cells = row.find_all('td')
                 if len(cells) >= 10:  # Ensure we have all required cells
                     data = {
-                        "date": date_text,
+                        "date": today_date,
                         "type": cells[1].get_text(strip=True),
                         "opponents": cells[2].get_text(strip=True),
                         "start_time": cells[3].get_text(strip=True),
@@ -726,6 +729,7 @@ async def fetch_schedule_data() -> List[Dict[str, Any]]:
                     }
                     schedule.append(data)
         
+        #return JSONResponse(content=schedule, media_type="application/json", indent=4)
         return schedule
         
     except aiohttp.ClientError as e:
@@ -741,8 +745,11 @@ async def fetch_schedule_data() -> List[Dict[str, Any]]:
             detail="Internal server error while fetching schedule"
         )
 
+
+
+
 #@app.get("/sports/schedule", tags=["Sports"])
-@app.get("/schedule")
+@app.get("/bball_schedule")
 async def get_sports_schedule():
     """
     Get today's sports schedule. This endpoint is publicly accessible and requires no authentication.
@@ -751,13 +758,13 @@ async def get_sports_schedule():
         List of today's scheduled activities including game type, opponents, times, location, etc.
     """
     try:
-        print("hello")
-        # schedule = await fetch_schedule_data()
-        # return {
-        #     "status": "success",
-        #     "timestamp": datetime.utcnow().isoformat(),
-        #     "schedule": schedule
-        # }
+        
+        schedule = await fetch_schedule_data()
+        return {
+            "status": "success",
+            "timestamp": datetime.utcnow().isoformat(),
+            "schedule": schedule
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -766,6 +773,135 @@ async def get_sports_schedule():
             status_code=500,
             detail="An unexpected error occurred"
         )
+
+@app.get("/bball_schedule/display")
+def serve_html_page():
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Today's Basketball</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f8f9fa;
+                color: #333;
+            }
+            .container {
+                max-width: 800px;
+                margin: 50px auto;
+                padding: 20px;
+                background: #fff;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+                text-align: center;
+                color: #0056b3;
+                margin-bottom: 20px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }
+            th, td {
+                padding: 10px;
+                text-align: left;
+                border: 1px solid #ddd;
+            }
+            th {
+                background-color: #f4f4f4;
+                font-weight: bold;
+            }
+            tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+            tr:hover {
+                background-color: #f1f1f1;
+            }
+            .empty {
+                text-align: center;
+                margin-top: 20px;
+                color: #888;
+                font-style: italic;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Today's Basketball</h1>
+            <div id="schedule-output">Loading schedule...</div>
+        </div>
+
+        <script>
+            // Fetch the basketball schedule data
+            fetch('/bball_schedule')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const schedule = data.schedule;
+                    if (!schedule || schedule.length === 0) {
+                        document.getElementById('schedule-output').innerHTML = 
+                            '<div class="empty">No schedule data available.</div>';
+                        return;
+                    }
+
+                    // Get the first schedule entry
+                    const event = schedule[0];
+                    
+                    // Generate table rows for non-empty fields
+                    const rows = Object.entries(event)
+                        .filter(([key, value]) => value && typeof value === 'string') // Only non-empty strings
+                        .map(([key, value]) => {
+                            // Format the details_url as a clickable link
+                            if (key === "details_url") {
+                                value = `<a href="https://www.schedulegalaxy.com${value}" target="_blank">Details</a>`;
+                            }
+                            return `
+                                <tr>
+                                    <td>${key.replace(/_/g, ' ')}</td>
+                                    <td>${value}</td>
+                                </tr>
+                            `;
+                        })
+                        .join('');
+
+                    // Render the table
+                    const tableHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Oxford Academy 8th Grade Boys Basketball</th>
+                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('schedule-output').innerHTML = tableHTML;
+                })
+                .catch(error => {
+                    document.getElementById('schedule-output').innerHTML =
+                        'Error loading schedule: ' + error.message;
+                });
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, media_type="text/html")
+
+
 
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
