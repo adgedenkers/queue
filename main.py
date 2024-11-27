@@ -1244,37 +1244,6 @@ async def save_shoe_data_to_db(
             detail="Error saving to database"
         )
 
-# # Example usage in an endpoint:
-# @app.post("/shoes/from_gpt")
-# async def create_shoe_from_gpt(
-#     enhanced_data: Dict[str, Any],
-#     user_id: int = Header(..., description="User ID"),
-#     x_token: str = Header(..., description="User Authentication Token"),
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     """Create a new shoe record from GPT-enhanced data"""
-#     try:
-#         # Verify user
-#         user = await verify_token(user_id, x_token, db)
-        
-#         # Save the shoe data
-#         db_shoe = await save_shoe_data_to_db(enhanced_data, user.id, db)
-        
-#         return {
-#             "status": "success",
-#             "message": "Shoe record created successfully",
-#             "shoe_id": db_shoe.id
-#         }
-        
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"Unexpected error creating shoe from GPT data: {str(e)}")
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail="An unexpected error occurred"
-#         )
-
 # -----------------------------------------------------------------------------
 # POST /shoes/                  Create a new shoe record
 # -----------------------------------------------------------------------------

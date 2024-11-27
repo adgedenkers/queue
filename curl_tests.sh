@@ -53,11 +53,8 @@ curl -X 'GET' 'https://api.denkers.co/queue/2?user_id=1' -H 'accept: application
   "user_id":1,
   "raw_text":"DV Elaine size 11 in Rose Gold",
   "status":"pending",
-  "options":
-  {
-    "object_type":"shoes-for-sale"
-  },
-  "properties":{},
+  "options":{},
+  "properties":{ "object_type": "shoes-for-sale" },
   "created":"2024-11-14T23:27:05.776687",
   "updated":"2024-11-14T23:27:05.776690",
   "images":[]
@@ -66,14 +63,6 @@ curl -X 'GET' 'https://api.denkers.co/queue/2?user_id=1' -H 'accept: application
 
 curl -X 'GET' 'https://api.denkers.co/queue/2?user_id=1' -H 'user_id: 1' -H 'x-token: 6b1f9eeb7e3a1f6e3b3f1a2c5a7d9e1b' -H 'accept: application/json' -H 'Content-Type: application/json'
 
-{
-  "id":2,
-  "user_id":1,
-  "raw_text":"DV Elaine size 11 in Rose Gold",
-  "status":"pending",
-  "options":{"object_type":"shoes-for-sale"},
-  "properties":{},
-  "created":"2024-11-14T23:27:05.776687",
-  "updated":"2024-11-14T23:27:05.776690",
-  "images":[]
-}
+
+# LATEST WORKING - 11/21/2024
+curl -X POST "https://api.denkers.co/queue/" -H "Content-Type: application/json" -H "x-token: 6b1f9eeb7e3a1f6e3b3f1a2c5a7d9e1b" -d '{ "user_id": 1, "raw_text": "DV by dolche vida Elaine in Rose Gold size 11", "properties":{ "object_type":"shoes-for-sale" } }'
