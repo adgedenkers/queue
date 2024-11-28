@@ -9,9 +9,35 @@
 # updated:   2024-11-18
 
 
-from passlib.context import CryptContext
-from fastapi.responses import JSONResponse, HTMLResponse
+import aiofiles
+import aiofiles.os as async_os
+import aiohttp
+import base64
+import enum
+import fastapi
+import os
+import json
+import logging
+import magic
+import openai
+import uuid
+
+from datetime import datetime
+
 from fastapi import FastAPI, HTTPException, UploadFile, Query, File, Form, Depends, status, Header
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.security import OAuth2PasswordBearer
+from fastapi.templating import Jinja2Templates
+
+from fastapi_login import LoginManager
+from fastapi_login.exceptions import InvalidCredentialsException
+
+from fastapi_users import FastAPIUsers
+from fastapi_users.authentication import JWTAuthentication
+from fastapi_users.db import SQLAlchemyUserDatabase   
+
+from requests_oauthlib import OAuth2Session
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -19,29 +45,23 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Bool
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
-import base64
-import aiofiles
-import os
-import json
-import uuid
-import magic
-import logging
-import aiohttp
-from logging.handlers import RotatingFileHandler
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, validator, EmailStr, field_validator
 from sqlalchemy.orm import selectinload
-from dotenv import load_dotenv
-import aiofiles.os as async_os
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-import enum
+
+
+from datetime import datetime
+
+from logging.handlers import RotatingFileHandler
+
+from typing import Optional, List, Dict, Any
+
+from pydantic import BaseModel, EmailStr, Field, field_validator, validator 
+
+from dotenv import load_dotenv
+
 from bs4 import BeautifulSoup
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
-
-import openai
 
 from openai import OpenAI, OpenAIError, AsyncOpenAI
 
@@ -271,7 +291,6 @@ class QueueCreate(BaseModel):
                 "images": []
             }
         }
-
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Pydantic: ShoeBase model
@@ -745,9 +764,6 @@ async def fetch_schedule_data() -> List[Dict[str, Any]]:
             detail="Internal server error while fetching schedule"
         )
 
-
-
-
 #@app.get("/sports/schedule", tags=["Sports"])
 @app.get("/bball_schedule")
 async def get_sports_schedule():
@@ -900,8 +916,6 @@ def serve_html_page():
     </html>
     """
     return HTMLResponse(content=html_content, media_type="text/html")
-
-
 
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1307,7 +1321,7 @@ async def create_shoe(
             detail="Database error occurred"
         )
 
-# -----------------------------------------------------------------------------
+# ----------------------l-------------------------------------------------------
 # GET /shoes/                               List shoes with optional filters
 # -----------------------------------------------------------------------------
 
