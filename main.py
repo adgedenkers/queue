@@ -42,7 +42,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 async def api_status():
     """API status check endpoint"""
     return {
-        "status": "fully operational",
+        "status": "All Endpoints are Fully Operational",
         "version": settings.VERSION
     }
 
